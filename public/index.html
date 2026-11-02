@@ -1,0 +1,132 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+  <meta name="theme-color" content="#1f7fc4">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <title>Clicker Island Wars</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏝️</text></svg>">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/style.css">
+  <script type="importmap">
+    { "imports": { "three": "/vendor/three/build/three.module.js", "three/addons/": "/vendor/three/examples/jsm/" } }
+  </script>
+</head>
+<body>
+  <canvas id="scene"></canvas>
+
+  <!-- Title -->
+  <section id="screen-title" class="screen">
+    <div class="card title-card">
+      <h1 class="logo"><span>Clicker</span><span>Island Wars</span></h1>
+      <p class="tagline">Answer island quizzes, build your fortress, then raid rival islands!</p>
+      <label class="field">
+        <span>Your captain name</span>
+        <input id="name" maxlength="16" autocomplete="off" placeholder="Captain ...">
+      </label>
+      <div class="btn-col">
+        <button class="btn primary big" data-act="quick">⚡ Quick Match</button>
+        <button class="btn gold big" data-act="practice">🤖 Play vs Bots</button>
+        <button class="btn" data-act="create">➕ Create Private Room</button>
+        <div class="join-row">
+          <input id="join-code" maxlength="4" placeholder="CODE" autocomplete="off">
+          <button class="btn" data-act="join">🔑 Join</button>
+        </div>
+      </div>
+      <details class="howto">
+        <summary>❓ How to play</summary>
+        <ol>
+          <li><b>Build phase:</b> earn coins! Quiz answers pay the most (Year 3 → Year 7 pays more). Tapping and Coin Mints help too.</li>
+          <li>Spend coins on <b>walls, turrets, traps, guard posts</b> and an army of <b>land troops and warships</b>.</li>
+          <li><b>PVP phase:</b> press ⚔️ Attack, pick an island, choose a unit and tap the <b>beach</b> (troops) or <b>outer sea</b> (ships) to deploy.</li>
+          <li>Destroy an enemy <b>Central Command</b> to knock them out. Last island standing wins! If rounds run out, the highest War Score wins.</li>
+        </ol>
+        <p class="muted">Desktop: drag to pan, right-drag to rotate, scroll to zoom. Keys: Q quiz, B build, A army, Space tap, 1-4 answer. Mobile: drag to pan, pinch to zoom/rotate.</p>
+      </details>
+    </div>
+  </section>
+
+  <!-- Lobby -->
+  <section id="screen-lobby" class="screen hidden">
+    <div class="card lobby-card">
+      <div class="lobby-head">
+        <div>
+          <div class="muted small">Room code</div>
+          <button class="room-code" data-act="copy-code" title="Copy invite link"><span id="lobby-code">----</span> 📋</button>
+        </div>
+        <button class="btn small" data-act="leave">🚪 Leave</button>
+      </div>
+      <div id="lobby-players" class="lobby-players"></div>
+      <div id="lobby-settings" class="lobby-settings"></div>
+      <div class="btn-row">
+        <button class="btn" data-act="add-bot" id="btn-add-bot">🤖 Add Bot</button>
+        <button class="btn primary big" data-act="start" id="btn-start">🚀 Start War</button>
+      </div>
+      <p id="lobby-hint" class="muted small center"></p>
+    </div>
+  </section>
+
+  <!-- In-game HUD -->
+  <div id="hud" class="hidden">
+    <header id="topbar">
+      <div class="pill coins" id="coins">🪙 <b>0</b></div>
+      <div class="pill phase" id="phase"><span id="phase-label">BUILD</span> <b id="phase-time">0:00</b></div>
+      <div class="top-actions">
+        <button class="icon-btn" data-act="toggle-players" title="Players">👥</button>
+        <button class="icon-btn" data-act="mute" id="btn-mute" title="Sound">🔊</button>
+        <button class="icon-btn" data-act="menu" title="Menu">☰</button>
+      </div>
+    </header>
+    <div id="viewbar" class="hidden"><span id="view-label"></span><button class="btn small" data-act="home">🏝️ Home</button></div>
+    <aside id="players"></aside>
+
+    <div id="placebar" class="hidden">
+      <span id="place-label"></span>
+      <button class="btn small primary hidden" id="place-confirm" data-act="place-confirm">✔ Here</button>
+      <button class="btn small" data-act="place-cancel">✖</button>
+    </div>
+
+    <div id="deploy" class="hidden">
+      <div class="deploy-head">
+        <span id="deploy-hint">Pick a unit, then tap the green zone</span>
+        <div class="seg" id="deploy-n">
+          <button data-act="deploy-n" data-n="1">×1</button>
+          <button data-act="deploy-n" data-n="5" class="on">×5</button>
+          <button data-act="deploy-n" data-n="50">All</button>
+        </div>
+      </div>
+      <div id="deploy-units" class="deploy-units"></div>
+    </div>
+
+    <button id="tap-btn" aria-label="Tap for coins"><span class="tap-coin">🪙</span><span class="tap-label">TAP</span><span id="tap-amt">+1</span></button>
+
+    <nav id="bottombar">
+      <button class="nav-btn quiz" data-act="open" data-panel="quiz"><span>📚</span>Quiz<small id="quiz-hint">+40</small></button>
+      <button class="nav-btn" data-act="open" data-panel="build"><span>🔨</span>Build</button>
+      <button class="nav-btn" data-act="open" data-panel="army"><span>🪖</span>Army</button>
+      <button class="nav-btn attack" data-act="open" data-panel="attack"><span>⚔️</span>Attack</button>
+    </nav>
+  </div>
+
+  <div id="sheet" class="sheet hidden">
+    <div class="sheet-head">
+      <h2 id="sheet-title"></h2>
+      <button class="icon-btn" data-act="close">✖</button>
+    </div>
+    <div id="sheet-body" class="sheet-body"></div>
+  </div>
+
+  <div id="banner" class="hidden"></div>
+  <div id="floaters"></div>
+  <div id="toasts"></div>
+  <div id="overlay" class="hidden"></div>
+  <div id="loading" class="hidden">Connecting…</div>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script type="module" src="/js/main.js"></script>
+</body>
+</html>
